@@ -133,11 +133,12 @@ sub request
 					if($response2->content =~ /<cas:proxyTicket>(.*?)<\/cas:proxyTicket>/)
 					{
 						my $ticket = $1;
-						$new_url = URI->new($service);
-						$new_url2 = $new_url->clone;
 
-						my @query_params = $new_url->query_form;
-						$new_url->query_form(@query_params, 'ticket', $ticket);
+						$new_url = URI->new($service . ($service =~ /\?/ ? '&' : '?') . 'ticket=' . $ticket);
+						$new_url2 = URI->new($service);
+
+#						my @query_params = $new_url->query_form;
+#						$new_url->query_form(@query_params, 'ticket', $ticket);
 						$referral->url($new_url);
 
 						#if service is equal to the original request, force re-request because we recieved a valid ticket from CAS
