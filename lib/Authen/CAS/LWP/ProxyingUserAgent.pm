@@ -4,23 +4,18 @@ use strict;
 use utf8;
 use base qw{LWP::UserAgent};
 
-our $VERSION = 0.01;
+our $VERSION = 0.02;
 
 use LWP 5.805;
 use URI;
 
 sub new($%) {
-	my ($proto, %settings) = @_;
+	my ($class, %settings) = @_;
+	my $self = $class->SUPER::new(%settings);
 
 	#CAS attributes
-	my $pgt = $settings{'pgt'};
-	my $casRootURL = $settings{'casRootURL'};
-
-	my $self = LWP::UserAgent->new(%settings);
-	$self->{'pgt'} = $pgt;
-	$self->{'casRootURL'} = $casRootURL;
-
-	bless $self, ref($proto) || $proto;
+	$self->{'pgt'} = $settings{'pgt'};
+	$self->{'casRootURL'} = $settings{'casRootURL'};
 
 	return $self;
 }
