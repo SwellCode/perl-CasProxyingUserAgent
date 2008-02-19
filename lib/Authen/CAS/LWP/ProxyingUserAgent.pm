@@ -100,11 +100,9 @@ sub request
 			$new_url2->query(undef);
 			my $cas_url = URI->new($self->{'casRootURL'} . '/login')->canonical;
 
-			#CAS redirection?
+			#CAS redirection? if so, retrieve Proxy Ticket using PGT
 			if($cas_url->eq($new_url2))
 			{
-				#retrieve Proxy Ticket using PGT
-
 				#retrieve the service name
 				my @query_params = $new_url->query_form;
 				my $service = undef;
@@ -118,32 +116,24 @@ sub request
 					}
 				}
 
-				#only proceed to retrieve a proxy ticket if a service was specified
-				if(defined $service)
+				#retrieve a proxy ticket for the service
+				my $ticket = $self->getPT($service);
+
+				#if a ticket is retrieved successfully, reissue initial request or issue a new request depending on the service URL
+				if($ticket)
 				{
-					my $PT_url = URI->new($self->{'casRootURL'} . '/proxy')->canonical;
-					$PT_url->query_form('targetService', $service, 'pgt', $self->{'pgt'});
+					$new_url = URI->new($service . ($service =~ /\?/o ? '&' : '?') . 'ticket=' . $ticket);
+					$new_url2 = URI->new($service);
 
-					my $response2 = $self->simple_request(HTTP::Request->new('GET' => $PT_url));
-					#if proxy ticket is retrieved successfully, force redirect to service URL with ticket attached
-					if($response2->content =~ /<cas:proxyTicket>(.*?)<\/cas:proxyTicket>/)
+					$referral->url($new_url);
+
+					#if service is equal to the original request, force re-request because we recieved a valid ticket from CAS
+					if($new_url2->eq($request->url))
 					{
-						my $ticket = $1;
-
-						$new_url = URI->new($service . ($service =~ /\?/ ? '&' : '?') . 'ticket=' . $ticket);
-						$new_url2 = URI->new($service);
-
-#						my @query_params = $new_url->query_form;
-#						$new_url->query_form(@query_params, 'ticket', $ticket);
-						$referral->url($new_url);
-
-						#if service is equal to the original request, force re-request because we recieved a valid ticket from CAS
-						if($new_url2->eq($request->url))
-						{
-							return $self->request($referral, $arg, $size, $response);
-						}
+						return $self->request($referral, $arg, $size, $response);
 					}
 				}
+
 			}
 		}
 		#####
@@ -163,10 +153,8 @@ sub request
 			}
 		}
 
-
 		return $response unless $self->redirect_ok($referral, $response);
 		return $self->request($referral, $arg, $size, $response);
-
 	}
 	elsif ($code == &HTTP::Status::RC_UNAUTHORIZED ||
 	$code == &HTTP::Status::RC_PROXY_AUTHENTICATION_REQUIRED
@@ -229,5 +217,25 @@ sub request
 	return $response;
 }
 
+sub getPT($$)
+{
+	my ($self, $service) = @_;
+
+	if(defined $service && $self->{'pgt'} && $self->{'casRootURL'})
+	{
+		my $PT_url = URI
+			->new($self->{'casRootURL'} . '/proxy')
+			->canonical;
+		$PT_url->query_form('targetService', $service, 'pgt', $self->{'pgt'});
+		my $response = $self->simple_request(HTTP::Request->new('GET' => $PT_url));
+		#if proxy ticket is retrieved successfully, return it
+		if($response->content =~ /<cas:proxyTicket>(.*?)<\/cas:proxyTicket>/o)
+		{
+			return $1;
+		}
+		return '';
+	}
+	return undef;
+}
 
 1;
