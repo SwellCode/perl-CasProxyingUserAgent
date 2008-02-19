@@ -16,6 +16,7 @@ sub new($%) {
 	#CAS attributes
 	$self->{'pgt'} = $settings{'pgt'};
 	$self->{'casRootURL'} = $settings{'casRootURL'};
+	$self->{'casRootURL'} =~ s/\/*$//g;
 
 	return $self;
 }
@@ -97,7 +98,7 @@ sub request
 			my $new_url2 = $new_url->clone;
 			$new_url2->fragment(undef);
 			$new_url2->query(undef);
-			my $cas_url = URI->new($self->{'casRootURL'} . 'login')->canonical;
+			my $cas_url = URI->new($self->{'casRootURL'} . '/login')->canonical;
 
 			#CAS redirection?
 			if($cas_url->eq($new_url2))
@@ -120,7 +121,7 @@ sub request
 				#only proceed to retrieve a proxy ticket if a service was specified
 				if(defined $service)
 				{
-					my $PT_url = URI->new($self->{'casRootURL'} . 'proxy')->canonical;
+					my $PT_url = URI->new($self->{'casRootURL'} . '/proxy')->canonical;
 					$PT_url->query_form('targetService', $service, 'pgt', $self->{'pgt'});
 
 					my $response2 = $self->simple_request(HTTP::Request->new('GET' => $PT_url));
