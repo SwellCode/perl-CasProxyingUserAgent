@@ -15,8 +15,8 @@ sub new($%) {
 
 	#CAS attributes
 	$self->{'pgt'} = $settings{'pgt'};
-	$self->{'casRootURL'} = $settings{'casRootURL'};
-	$self->{'casRootURL'} =~ s/\/*$//g;
+	$self->{'casServer'} = $settings{'casRootURL'};
+	$self->{'casServer'} =~ s/\/*$//og;
 
 	return $self;
 }
@@ -91,14 +91,14 @@ sub request
 		#####CAS redirection code
 		#####
 		#check to see if CAS variables are defined before proceeding
-		if($self->{'pgt'} && $self->{'casRootURL'})
+		if($self->{'pgt'} && $self->{'casServer'})
 		{
 			#initialize variables
 			my $new_url = URI->new_abs(scalar $response->header('Location'),$request->url)->canonical;
 			my $new_url2 = $new_url->clone;
 			$new_url2->fragment(undef);
 			$new_url2->query(undef);
-			my $cas_url = URI->new($self->{'casRootURL'} . '/login')->canonical;
+			my $cas_url = URI->new($self->{'casServer'} . '/login')->canonical;
 
 			#CAS redirection? if so, retrieve Proxy Ticket using PGT
 			if($cas_url->eq($new_url2))
@@ -221,10 +221,10 @@ sub getPT($$)
 {
 	my ($self, $service) = @_;
 
-	if(defined $service && $self->{'pgt'} && $self->{'casRootURL'})
+	if(defined $service && $self->{'pgt'} && $self->{'casServer'})
 	{
 		my $PT_url = URI
-			->new($self->{'casRootURL'} . '/proxy')
+			->new($self->{'casServer'} . '/proxy')
 			->canonical;
 		$PT_url->query_form('targetService', $service, 'pgt', $self->{'pgt'});
 		my $response = $self->simple_request(HTTP::Request->new('GET' => $PT_url));
