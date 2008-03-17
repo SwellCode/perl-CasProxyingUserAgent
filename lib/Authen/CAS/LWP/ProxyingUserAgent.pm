@@ -15,7 +15,7 @@ sub new($%) {
 
 	#CAS attributes
 	$self->{'pgt'} = $settings{'pgt'};
-	$self->{'casServer'} = $settings{'casRootURL'};
+	$self->{'casServer'} = $settings{'casServer'};
 	$self->{'casServer'} =~ s/\/*$//og;
 
 	return $self;
