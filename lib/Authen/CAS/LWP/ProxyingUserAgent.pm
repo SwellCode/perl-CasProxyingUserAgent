@@ -17,16 +17,55 @@ use URI::QueryParam;
 sub new($%) {
 	my $self = shift;
 	my (%settings) = @_;
+
+	#setup the base object
 	$self = $self->SUPER::new(%settings);
 
 	#CAS attributes
-	$self->{'pgt'} = $settings{'pgt'};
-	$self->{'casServer'} = $settings{'casServer'};
-	$self->{'casServer'} =~ s/\/*$//og;
+	if($settings{'casServer'} && $settings{'casPgt'}) {
+		$self->{'casServer'} = URI->new($settings{'casServer'} . ($settings{'casServer'} =~ /\/$/o ? '' : '/'));
+		$self->{'casPgt'} = $settings{'casPgt'};
 
-	#add proxy request callback handler is casServer and PGT are set
-	if($self->{'pgt'} && $self->{'casServer'}) {
-		$self->set_my_handler('response_redirect', \&casProxyRequest,
+		#add proxy request callback handler
+		$self->set_my_handler('response_redirect',
+			sub {
+				my ($response, $ua) = @_;
+
+				#check to see if CAS attributes are defined before proceeding
+				if($ua->{'casPgt'} && $ua->{'casServer'}) {
+					my $request = $response->request;
+					my $targetUri = URI->new_abs(scalar $response->header('Location'), $request->uri)->canonical;
+
+					#CAS redirection?
+					if($ua->_isCasLoginUri($targetUri)) {
+						#find the requested service name
+						my $service = $targetUri->query_param('service');
+
+						#short-circuit if no service is found
+						return if(!$service);
+
+						#if a proxy ticket is retrieved successfully, reissue initial request with the proxy ticket
+						if(my $ticket = $ua->getPt($service)) {
+							#generate the new uri
+							my $uri = URI->new($service . ($service =~ /\?/o ? '&' : '?') . 'ticket=' . $ticket);
+
+							#if the service is the same as the original request uri, reissue the request to keep any request content
+							if($request->uri->eq($service)) {
+								my $newRequest = $request->clone;
+								$newRequest->uri($uri);
+								return $newRequest;
+							}
+							#otherwise update the target location for the redirect response
+							else {
+								$response->header('Location' => $uri->as_string);
+							}
+						}
+					}
+				}
+
+				#use default processing
+				return;
+			},
 			'm_code' => [
 				HTTP::Status::RC_MOVED_PERMANENTLY,
 				HTTP::Status::RC_FOUND,
@@ -42,76 +81,39 @@ sub new($%) {
 ##Instance Methods
 
 #method that tests to see if the specified uri is a cas login uri
-sub _isCASLoginURI($$) {
+sub _isCasLoginUri($$) {
 	my $self = shift;
-	my ($targetURI) = @_;
+	my ($uri) = @_;
 
-	#make targetURI a URI object and clean off un-necessary params
-	$targetURI = URI->new($targetURI);
-	$targetURI->fragment(undef);
-	$targetURI->query(undef);
+	#cleanup $uri before testing to see if it's a cas login uri
+	$uri = URI->new($uri);
+	$uri->fragment(undef);
+	$uri->query(undef);
 
-	#test if URI is for the cas login page
-	return $targetURI->eq($self->{'casServer'} . '/login');
+	#test if $uri is for the cas login page
+	return $uri->eq(URI->new_abs('login', $self->{'casServer'}));
 }
 
-#method to get a PT for the specified service
-sub getPT($$) {
+#method to get and return a proxy ticket for the specified service
+sub getPt($$) {
 	my $self = shift;
 	my ($service) = @_;
 
-	if($service && $self->{'pgt'} && $self->{'casServer'}) {
-		my $PT_url = URI
-			->new($self->{'casServer'} . '/proxy')
+	#only process the request if there is a cas server and pgt defined for this object
+	if($service && $self->{'casPgt'} && $self->{'casServer'}) {
+		#create the request uri
+		my $ptUri = URI
+			->new(URI->new_abs('proxy', $self->{'casServer'}))
 			->canonical;
-		$PT_url->query_form('targetService', $service, 'pgt', $self->{'pgt'});
-		my $response = $self->simple_request(HTTP::Request->new('GET' => $PT_url));
-		#if proxy ticket is retrieved successfully, return it
+		$ptUri->query_form('targetService', $service, 'pgt', $self->{'casPgt'});
+
+		#fetch proxy ticket and return it if successful
+		my $response = $self->simple_request(HTTP::Request->new('GET' => $ptUri));
 		if($response->content =~ /<cas:proxyTicket>(.*?)<\/cas:proxyTicket>/o) {
 			return $1;
 		}
 	}
 
-	return;
-}
-
-##Callback functions
-
-#callback that will handle retrieving a CAS PT and reissue the original request
-sub casProxyRequest($$$) {
-	my ($response, $ua, $h) = @_;
-
-	#check to see if CAS attributes are defined before proceeding
-	if($ua->{'pgt'} && $ua->{'casServer'}) {
-		my $request = $response->request;
-		my $targetURI = URI->new_abs(scalar $response->header('Location'), $request->uri)->canonical;
-
-		#CAS redirection?
-		if($ua->_isCASLoginURI($targetURI)) {
-			#find the requested service name
-			my $service = $targetURI->query_param('service');
-
-			#short-circuit if no service is found
-			return if(!$service);
-
-			#if a proxy ticket is retrieved successfully, reissue initial request with the proxy ticket
-			my $ticket = $ua->getPT($service);
-			if($ticket) {
-				my $newURI = URI->new($service . ($service =~ /\?/o ? '&' : '?') . 'ticket=' . $ticket);
-				#update the Location header in the response
-				$response->header('Location' => $newURI->as_string);
-
-				#if the service is the same as the original request uri, reissue the request to keep any request content
-				if($request->uri->eq($service)) {
-					my $newRequest = $request->clone;
-					$newRequest->uri($newURI);
-					return $newRequest;
-				}
-			}
-		}
-	}
-
-	#use default processing
 	return;
 }
 
