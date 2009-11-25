@@ -4,7 +4,7 @@ use strict;
 use utf8;
 use base qw{LWP::UserAgent};
 
-our $VERSION = 0.03;
+our $VERSION = 0.04;
 
 use HTTP::Status 5.811 ();
 use LWP 5.815;
@@ -12,6 +12,13 @@ use URI;
 use URI::QueryParam;
 
 ##Static Methods
+
+#return the default user agent for this class
+sub _agent($) {
+	return
+		$_[0]->SUPER::_agent . ' ' .
+		'CAS-ProxyingAgent/' . $VERSION;
+}
 
 #Constructor
 sub new($%) {
