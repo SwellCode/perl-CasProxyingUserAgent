@@ -1,0 +1,6 @@
+Build.PL
+lib/Authen/CAS/LWP/ProxyingUserAgent.pm
+lib/Authen/CAS/LWP/UserAgent.pm
+MANIFEST			This list of files
+META.yml
+README

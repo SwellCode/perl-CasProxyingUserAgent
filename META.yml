@@ -1,0 +1,25 @@
+---
+abstract: ~
+author: []
+configure_requires:
+  Module::Build: 0.36
+dynamic_config: 0
+generated_by: 'Module::Build version 0.3607'
+license: mit
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: Authen-CAS-LWP
+provides:
+  Authen::CAS::LWP::ProxyingUserAgent:
+    file: lib/Authen/CAS/LWP/ProxyingUserAgent.pm
+    version: 0.04
+  Authen::CAS::LWP::UserAgent:
+    file: lib/Authen/CAS/LWP/UserAgent.pm
+    version: 0.05
+requires:
+  LWP: 5.819
+  URI: 1.10
+resources:
+  license: http://opensource.org/licenses/mit-license.php
+version: 0.05

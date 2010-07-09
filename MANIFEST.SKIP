@@ -1,0 +1,42 @@
+\B\.git\b
+\B\.gitignore\b
+
+# Avoid Makemaker generated and utility files.
+\bMANIFEST\.bak
+\bMakefile$
+\bblib/
+\bMakeMaker-\d
+\bpm_to_blib\.ts$
+\bpm_to_blib$
+
+# Avoid Module::Build generated and utility files.
+\bBuild$
+\b_build/
+
+# Avoid temp and backup files.
+~$
+\.old$
+\#$
+\b\.#
+\.bak$
+
+# Avoid Devel::Cover files.
+\bcover_db\b
+
+# Avoid configuration metadata file
+^MYMETA\.
+
+# Avoid Module::Build generated and utility files.
+\bBuild$
+\bBuild.bat$
+\b_build
+\bBuild.COM$
+\bBUILD.COM$
+\bbuild.com$
+^MANIFEST\.SKIP
+
+# Avoid archives of this distribution
+\bAuthen-CAS-LWP-[\d\.\_]+
+
+#Other system files that shouldn't be included
+.DS_Store
